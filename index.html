@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Journal & Calendar ($50 Plan)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom Scrollbar for modal content */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-700 pb-4 gap-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">Trading Journal Dashboard</h1>
+        <p class="text-xs md:text-sm text-slate-400">ระบบบันทึกประวัติการเทรดรายวัน และสรุปผลรายสัปดาห์/รายปี</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="clearAllData()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-xs text-white rounded transition">ล้างข้อมูลทั้งหมด</button>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">🔍 ตัวกรองข้อมูล:</span>
+        <div>
+          <select id="filterMonth" onchange="applyFilters()" class="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="ALL">แสดงทุกเดือน (All Months)</option>
+            <option value="01">มกราคม (Jan)</option>
+            <option value="02">กุมภาพันธ์ (Feb)</option>
+            <option value="03">มีนาคม (Mar)</option>
+            <option value="04">เมษายน (Apr)</option>
+            <option value="05">พฤษภาคม (May)</option>
+            <option value="06">มิถุนายน (Jun)</option>
+            <option value="07">กรกฎาคม (Jul)</option>
+            <option value="08">สิงหาคม (Aug)</option>
+            <option value="09" selected>กันยายน (Sep)</option>
+            <option value="10">ตุลาคม (Oct)</option>
+            <option value="11">พฤศจิกายน (Nov)</option>
+            <option value="12">ธันวาคม (Dec)</option>
+          </select>
+        </div>
+        <div>
+          <input type="date" id="filterDate" onchange="applyFilters()" class="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+        </div>
+        <button onclick="resetFilters()" class="text-xs text-slate-400 hover:text-white underline">รีเซ็ตตัวกรอง</button>
+      </div>
+      
+      <!-- Calendar Month Selector -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-400">มุมมองปฏิทิน:</span>
+        <select id="calendarMonthSelect" class="bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded px-3 py-1.5 text-xs focus:outline-none">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <span class="text-xs text-slate-400 block">กำไร/ขาดทุน สะสมสุทธิ (Net P/L)</span>
+        <span id="kpiNetProfit" class="text-2xl font-bold text-slate-200">$0.00</span>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <span class="text-xs text-slate-400 block">อัตราการชนะ (Win Rate)</span>
+        <span id="kpiWinRate" class="text-2xl font-bold text-cyan-400">0.0%</span>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <span class="text-xs text-slate-400 block">จำนวนไม้ที่เทรดทั้งหมด</span>
+        <span id="kpiTotalTrades" class="text-2xl font-bold text-slate-200">0 ไม้</span>
+      </div>
+    </div>
+
+    <!-- Calendar View (Full Width) -->
+    <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
+      <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+        <h2 id="calendarTitle" class="text-lg font-bold text-slate-200">📅 ปฏิทินผลการเทรด</h2>
+        <span class="text-[11px] text-amber-400 bg-amber-950/60 px-2.5 py-1 rounded border border-amber-800/50">💡 คลิกที่ช่องวันที่เพื่อบันทึก หรือแก้ไขข้อมูลการเทรดได้ทันที</span>
+      </div>
+      
+      <!-- Days Header -->
+      <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs text-slate-400 mb-2">
+        <div class="text-rose-400">อา.</div>
+        <div>จ.</div>
+        <div>อ.</div>
+        <div>พ.</div>
+        <div>พฤ.</div>
+        <div>ศ.</div>
+        <div class="text-sky-400">ส. (สรุปสัปดาห์)</div>
+      </div>
+
+      <!-- Calendar Days Grid -->
+      <div id="calendarGrid" class="grid grid-cols-7 gap-1 md:gap-2">
+        <!-- Calendar cells rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Trade History Table -->
+    <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md overflow-x-auto">
+      <h2 class="text-lg font-bold text-slate-200 mb-3 border-b border-slate-700 pb-2">📋 ประวัติการเทรดรายไม้ (Daily Trade Log)</h2>
+      <table class="w-full text-left text-xs md:text-sm">
+        <thead class="bg-slate-900 text-slate-400 uppercase border-b border-slate-700">
+          <tr>
+            <th class="p-2">วันที่</th>
+            <th class="p-2">ช่วงเวลา</th>
+            <th class="p-2">สินทรัพย์</th>
+            <th class="p-2">Setup A+</th>
+            <th class="p-2">ผลลัพธ์</th>
+            <th class="p-2">P/L ($)</th>
+            <th class="p-2">หมายเหตุ</th>
+            <th class="p-2 text-center">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="tradeLogBody" class="divide-y divide-slate-700 text-slate-300">
+          <!-- Inserted via JS -->
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- MODAL: บันทึก/ดูการเทรดเมื่อกดคลิกช่องวันที่ในปฏิทิน -->
+  <div id="calendarModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+        <h3 id="modalTitle" class="text-lg font-bold text-emerald-400">📅 บันทึกการเทรด</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+      </div>
+      
+      <!-- รายการไม้ที่เทรดไปแล้วในวันนี้ -->
+      <div id="modalExistingTrades" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- ฟอร์มเพิ่มไม้ใหม่ของวันที่เลือก -->
+      <form id="modalForm" onsubmit="addTradeFromModal(event)" class="space-y-3 pt-2 border-t border-slate-700">
+        <span class="text-xs text-slate-400 font-bold block">➕ เพิ่มไม้การเทรดสำหรับวันดังกล่าว:</span>
+        <input type="hidden" id="modalDate">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">ช่วงเวลา</label>
+            <select id="modalSession" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-slate-200">
+              <option value="09:00-11:00">เช้า (09.00 - 11.00 น.)</option>
+              <option value="14:00-17:00">บ่าย (14.00 - 17.00 น.)</option>
+              <option value="19:00-22:00">ดึก (19.00 - 22.00 น.)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">สินทรัพย์</label>
+            <input type="text" id="modalAsset" value="XAUUSD" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-slate-200" required>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Setup A+</label>
+            <select id="modalSetup" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-slate-200">
+              <option value="Yes">ใช่</option>
+              <option value="No">ไม่ใช่</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">ผลลัพธ์</label>
+            <select id="modalResult" onchange="autoFillModalPL()" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-slate-200">
+              <option value="WIN">ชนะ (WIN)</option>
+              <option value="LOSS">แพ้ (LOSS)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">P/L ($)</label>
+            <input type="number" step="0.01" id="modalPL" value="100" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-slate-200" required>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">หมายเหตุ</label>
+          <input type="text" id="modalNote" placeholder="เช่น กดตามวินัยแผน $50" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-slate-200">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs rounded">ปิด</button>
+          <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold rounded">บันทึกไม้ใหม่</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    const CURRENT_YEAR = 2026;
+    let trades = JSON.parse(localStorage.getItem('tradeLogsYearly')) || [];
+
+    const monthNames = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ];
+
+    initCalendarMonthSelector();
+
+    function autoFillModalPL() {
+      const res = document.getElementById('modalResult').value;
+      document.getElementById('modalPL').value = res === 'WIN' ? '100' : '-50';
+    }
+
+    function initCalendarMonthSelector() {
+      const select = document.getElementById('calendarMonthSelect');
+      select.innerHTML = '';
+      monthNames.forEach((name, idx) => {
+        const mVal = String(idx + 1).padStart(2, '0');
+        const opt = document.createElement('option');
+        opt.value = mVal;
+        opt.innerText = `${name} ${CURRENT_YEAR}`;
+        if (mVal === '09') opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener('change', function() {
+        document.getElementById('filterMonth').value = this.value;
+        renderDashboard();
+        renderCalendar();
+      });
+    }
+
+    function saveAndRender() {
+      localStorage.setItem('tradeLogsYearly', JSON.stringify(trades));
+      renderDashboard();
+      renderCalendar();
+    }
+
+    function deleteTrade(id) {
+      trades = trades.filter(t => t.id !== id);
+      saveAndRender();
+      
+      const modalDate = document.getElementById('modalDate').value;
+      if (modalDate) {
+        openModalForDate(modalDate);
+      }
+    }
+
+    function clearAllData() {
+      if (confirm('คุณต้องการลบประวัติการเทรดทั้งหมดใช่หรือไม่?')) {
+        trades = [];
+        saveAndRender();
+      }
+    }
+
+    function applyFilters() {
+      const selectedMonth = document.getElementById('filterMonth').value;
+      if (selectedMonth !== 'ALL') {
+        document.getElementById('calendarMonthSelect').value = selectedMonth;
+      }
+      renderDashboard();
+      renderCalendar();
+    }
+
+    function resetFilters() {
+      document.getElementById('filterMonth').value = 'ALL';
+      document.getElementById('filterDate').value = '';
+      document.getElementById('calendarMonthSelect').value = '09';
+      renderDashboard();
+      renderCalendar();
+    }
+
+    function getFilteredTrades() {
+      const selectedMonth = document.getElementById('filterMonth').value;
+      const selectedDate = document.getElementById('filterDate').value;
+
+      return trades.filter(t => {
+        const [year, month, day] = t.date.split('-');
+        let matchMonth = selectedMonth === 'ALL' || month === selectedMonth;
+        let matchDate = !selectedDate || t.date === selectedDate;
+        return matchMonth && matchDate;
+      });
+    }
+
+    // --- LOGIC ปฏิทินและระบบคลิกวันที่ ---
+    function renderCalendar() {
+      const selectedMonth = document.getElementById('calendarMonthSelect').value;
+      const monthIdx = parseInt(selectedMonth, 10) - 1;
+      
+      document.getElementById('calendarTitle').innerText = `📅 ปฏิทินผลการเทรด (${monthNames[monthIdx]} ${CURRENT_YEAR})`;
+
+      const calendarGrid = document.getElementById('calendarGrid');
+      calendarGrid.innerHTML = '';
+
+      const firstDate = new Date(CURRENT_YEAR, monthIdx, 1);
+      const lastDate = new Date(CURRENT_YEAR, monthIdx + 1, 0);
+      const firstDayOffset = firstDate.getDay();
+      const totalDays = lastDate.getDate();
+
+      const dailyPL = {};
+      const dailyTradeCount = {};
+      trades.forEach(t => {
+        dailyPL[t.date] = (dailyPL[t.date] || 0) + t.pl;
+        dailyTradeCount[t.date] = (dailyTradeCount[t.date] || 0) + 1;
+      });
+
+      for (let i = 0; i < firstDayOffset; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'h-24 bg-slate-900/30 rounded border border-slate-800/40 opacity-40';
+        calendarGrid.appendChild(emptyCell);
+      }
+
+      let currentWeekPL = 0;
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dayStr = String(day).padStart(2, '0');
+        const dateStr = `${CURRENT_YEAR}-${selectedMonth}-${dayStr}`;
+        const dayOfWeek = new Date(CURRENT_YEAR, monthIdx, day).getDay();
+
+        const pl = dailyPL[dateStr] || 0;
+        const count = dailyTradeCount[dateStr] || 0;
+        currentWeekPL += pl;
+
+        const isSaturday = (dayOfWeek === 6);
+        const cell = document.createElement('div');
+        
+        let bgClass = 'bg-slate-900 border-slate-700/60 hover:border-emerald-500/50';
+        if (count > 0) {
+          bgClass = pl >= 0 ? 'bg-emerald-950/50 border-emerald-600/80 hover:border-emerald-400' : 'bg-rose-950/50 border-rose-600/80 hover:border-rose-400';
+        }
+
+        cell.className = `h-24 p-2 rounded border flex flex-col justify-between cursor-pointer transition transform hover:-translate-y-0.5 ${bgClass}`;
+        cell.onclick = () => openModalForDate(dateStr);
+
+        let satSummaryHtml = '';
+        if (isSaturday) {
+          const satPL = currentWeekPL;
+          satSummaryHtml = `
+            <div class="mt-1 pt-1 border-t border-slate-700/80 bg-slate-950/80 p-1 rounded text-center">
+              <span class="text-[9px] text-slate-400 block font-semibold">รวมอาทิตย์นี้:</span>
+              <span class="text-[11px] font-extrabold ${satPL >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                ${satPL >= 0 ? '+' : ''}$${satPL.toFixed(1)}
+              </span>
+            </div>
+          `;
+          currentWeekPL = 0;
+        }
+
+        cell.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-300">${day}</span>
+            ${count > 0 ? `<span class="text-[9px] text-slate-400 bg-slate-800 px-1 rounded">${count} ไม้</span>` : ''}
+          </div>
+          <div class="text-center my-auto">
+            ${count > 0 ? `
+              <span class="text-xs font-bold ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                ${pl >= 0 ? '+' : ''}$${pl.toFixed(1)}
+              </span>
+            ` : '<span class="text-[10px] text-slate-600 block hover:text-emerald-400">+ เพิ่มไม้</span>'}
+          </div>
+          ${satSummaryHtml}
+        `;
+
+        calendarGrid.appendChild(cell);
+      }
+    }
+
+    // --- MODAL FUNCTIONS ---
+    function openModalForDate(dateStr) {
+      document.getElementById('modalDate').value = dateStr;
+      document.getElementById('modalTitle').innerText = `📅 บันทึกการเทรด วันที่ ${dateStr}`;
+      
+      const dayTrades = trades.filter(t => t.date === dateStr);
+      const container = document.getElementById('modalExistingTrades');
+      container.innerHTML = '';
+
+      if (dayTrades.length > 0) {
+        container.innerHTML = `<span class="text-xs text-slate-400 font-bold block mb-1">ประวัติในวันนี้ (${dayTrades.length} ไม้):</span>`;
+        dayTrades.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'flex justify-between items-center bg-slate-900 p-2 rounded text-xs border border-slate-700';
+          div.innerHTML = `
+            <div>
+              <span class="font-bold text-slate-200">${t.asset}</span>
+              <span class="text-slate-400">(${t.session})</span>
+              <span class="${t.result === 'WIN' ? 'text-emerald-400' : 'text-rose-400'} font-bold ml-1">${t.result}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono ${t.pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${t.pl >= 0 ? '+' : ''}$${t.pl}</span>
+              <button onclick="deleteTrade(${t.id})" class="text-rose-400 hover:text-rose-300">ลบ</button>
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      } else {
+        container.innerHTML = '<span class="text-xs text-slate-500 italic block text-center py-2">ยังไม่มีประวัติการเทรดในวันนี้</span>';
+      }
+
+      document.getElementById('calendarModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('calendarModal').classList.add('hidden');
+    }
+
+    function addTradeFromModal(e) {
+      e.preventDefault();
+      const dateStr = document.getElementById('modalDate').value;
+      const newTrade = {
+        id: Date.now(),
+        date: dateStr,
+        session: document.getElementById('modalSession').value,
+        asset: document.getElementById('modalAsset').value.toUpperCase(),
+        setup: document.getElementById('modalSetup').value,
+        result: document.getElementById('modalResult').value,
+        pl: parseFloat(document.getElementById('modalPL').value),
+        note: document.getElementById('modalNote').value
+      };
+
+      trades.push(newTrade);
+      saveAndRender();
+      document.getElementById('modalNote').value = '';
+      openModalForDate(dateStr);
+    }
+
+    function renderDashboard() {
+      const tbody = document.getElementById('tradeLogBody');
+      tbody.innerHTML = '';
+
+      const filteredTrades = getFilteredTrades();
+
+      let wins = 0;
+      let losses = 0;
+      let netPL = 0;
+
+      const sortedTrades = [...filteredTrades].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      sortedTrades.forEach((trade) => {
+        if (trade.result === 'WIN') wins++;
+        if (trade.result === 'LOSS') losses++;
+        netPL += trade.pl;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-750 border-b border-slate-700/50';
+        tr.innerHTML = `
+          <td class="p-2 font-mono">${trade.date}</td>
+          <td class="p-2">${trade.session}</td>
+          <td class="p-2 font-bold">${trade.asset}</td>
+          <td class="p-2"><span class="px-2 py-0.5 rounded text-xs ${trade.setup === 'Yes' ? 'bg-emerald-900 text-emerald-300' : 'bg-rose-900 text-rose-300'}">${trade.setup}</span></td>
+          <td class="p-2"><span class="font-bold ${trade.result === 'WIN' ? 'text-emerald-400' : 'text-rose-400'}">${trade.result}</span></td>
+          <td class="p-2 font-mono ${trade.pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${trade.pl >= 0 ? '+' : ''}${trade.pl.toFixed(2)}</td>
+          <td class="p-2 text-slate-400 text-xs">${trade.note || '-'}</td>
+          <td class="p-2 text-center">
+            <button onclick="deleteTrade(${trade.id})" class="text-rose-400 hover:text-rose-300 text-xs">ลบ</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const totalTrades = filteredTrades.length;
+      const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0.0';
+
+      document.getElementById('kpiNetProfit').innerText = `$${netPL.toFixed(2)}`;
+      document.getElementById('kpiNetProfit').className = `text-2xl font-bold ${netPL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      document.getElementById('kpiWinRate').innerText = `${winRate}%`;
+      document.getElementById('kpiTotalTrades').innerText = `${totalTrades} ไม้`;
+    }
+
+    // Initial Execution
+    renderDashboard();
+    renderCalendar();
+  </script>
+</body>
+</html>
